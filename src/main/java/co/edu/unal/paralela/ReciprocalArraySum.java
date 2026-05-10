@@ -1,5 +1,6 @@
 package co.edu.unal.paralela;
 
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.RecursiveAction;
 
 /**
@@ -125,7 +126,11 @@ public final class ReciprocalArraySum {
 
         @Override
         protected void compute() {
-            // Para hacer
+            double sum = 0;
+            for (int i = startIndexInclusive; i < endIndexExclusive; i++) {
+                sum += 1 / input[i];
+            }
+            value = sum;
         }
     }
 
@@ -140,15 +145,19 @@ public final class ReciprocalArraySum {
      */
     protected static double parArraySum(final double[] input) {
         assert input.length % 2 == 0;
+        final int mid = input.length / 2;
 
-        double sum = 0;
+        final ReciprocalArraySumTask left = new ReciprocalArraySumTask(0, mid, input);
+        final ReciprocalArraySumTask right = new ReciprocalArraySumTask(mid, input.length, input);
+        final ForkJoinPool pool = new ForkJoinPool(2);
 
-        // Calcula la suma de los recíprocos de los elementos del arreglo
-        for (int i = 0; i < input.length; i++) {
-            sum += 1 / input[i];
-        }
+        pool.execute(left);
+        pool.execute(right);
+        left.join();
+        right.join();
+        pool.shutdown();
 
-        return sum;
+        return left.getValue() + right.getValue();
     }
 
     /**
@@ -163,11 +172,25 @@ public final class ReciprocalArraySum {
      */
     protected static double parManyTaskArraySum(final double[] input,
             final int numTasks) {
-        double sum = 0;
+        final ReciprocalArraySumTask[] tasks = new ReciprocalArraySumTask[numTasks];
+        for (int i = 0; i < numTasks; i++) {
+            final int start = getChunkStartInclusive(i, numTasks, input.length);
+            final int end = getChunkEndExclusive(i, numTasks, input.length);
+            tasks[i] = new ReciprocalArraySumTask(start, end, input);
+        }
+        final ForkJoinPool pool = new ForkJoinPool(numTasks);
 
-        // Calcula la suma de los recíprocos de los elementos del arreglo
-        for (int i = 0; i < input.length; i++) {
-            sum += 1 / input[i];
+        for (ReciprocalArraySumTask task : tasks) {
+            pool.execute(task);
+        }
+        for (ReciprocalArraySumTask task : tasks) {
+            task.join();
+        }
+        pool.shutdown();
+
+        double sum = 0;
+        for (ReciprocalArraySumTask task : tasks) {
+            sum += task.getValue();
         }
 
         return sum;
