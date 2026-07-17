@@ -1,5 +1,6 @@
-package co.unal.edu.unal.paralela;
+package co.edu.unal.paralela;
 
+import static edu.rice.pcdp.PCDP.forall2dChunked;
 import static edu.rice.pcdp.PCDP.forseq2d;
 
 /**
@@ -43,7 +44,7 @@ public final class MatrixMultiply {
         /*
          * PARA HACER: paralelizar el ciclo externo para mejorar el desempeño.
          */
-        forseq2d(0, N - 1, 0, N - 1, (i, j) -> {
+        forall2dChunked(0, N - 1, 0, N - 1, (i, j) -> {
             C[i][j] = 0.0;
             for (int k = 0; k < N; k++) {
                 C[i][j] += A[i][k] * B[k][j];
